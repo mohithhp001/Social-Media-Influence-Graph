@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Social Media Influence Graph</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Analytics Dashboard</h1>
+            <nav>
+                <a href="/" class="nav-link">Home</a>
+                <a href="/graph" class="nav-link">Graph View</a>
+                <a href="/analytics" class="nav-link active">Analytics</a>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Key Metrics -->
+            <section class="metrics-section">
+                <h3>Network Overview</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <h4>Total Nodes</h4>
+                        <div class="metric-value" id="total-nodes">0</div>
+                        <div class="metric-change">Users in network</div>
+                    </div>
+                    <div class="metric-card">
+                        <h4>Total Edges</h4>
+                        <div class="metric-value" id="total-edges">0</div>
+                        <div class="metric-change">Connections</div>
+                    </div>
+                    <div class="metric-card">
+                        <h4>Network Density</h4>
+                        <div class="metric-value" id="network-density">0.000</div>
+                        <div class="metric-change">Connectivity ratio</div>
+                    </div>
+                    <div class="metric-card">
+                        <h4>Avg Clustering</h4>
+                        <div class="metric-value" id="avg-clustering">0.000</div>
+                        <div class="metric-change">Community structure</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts Section -->
+            <section class="charts-section">
+                <div class="charts-grid">
+                    <!-- Influence Distribution Chart -->
+                    <div class="chart-card">
+                        <h4>Influence Distribution</h4>
+                        <canvas id="influence-chart"></canvas>
+                    </div>
+
+                    <!-- Relationship Types Chart -->
+                    <div class="chart-card">
+                        <h4>Relationship Types</h4>
+                        <canvas id="relationship-chart"></canvas>
+                    </div>
+
+                    <!-- Follower Distribution Chart -->
+                    <div class="chart-card">
+                        <h4>Follower Distribution</h4>
+                        <canvas id="follower-chart"></canvas>
+                    </div>
+
+                    <!-- Engagement vs Followers Scatter -->
+                    <div class="chart-card">
+                        <h4>Engagement vs Followers</h4>
+                        <canvas id="engagement-scatter"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Top Influencers Table -->
+            <section class="influencers-section">
+                <h3>Top Influencers Analysis</h3>
+                <div class="table-container">
+                    <table id="influencers-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>User</th>
+                                <th>Followers</th>
+                                <th>Engagement</th>
+                                <th>Influence Score</th>
+                                <th>PageRank</th>
+                                <th>Centrality</th>
+                            </tr>
+                        </thead>
+                        <tbody id="influencers-tbody">
+                            <tr>
+                                <td colspan="7">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Network Analysis -->
+            <section class="analysis-section">
+                <h3>Network Analysis</h3>
+                <div class="analysis-grid">
+                    <div class="analysis-card">
+                        <h4>Centrality Measures</h4>
+                        <div id="centrality-analysis">
+                            <p>Loading centrality analysis...</p>
+                        </div>
+                    </div>
+                    <div class="analysis-card">
+                        <h4>Community Detection</h4>
+                        <div id="community-analysis">
+                            <p>Loading community analysis...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Status Messages -->
+        <div id="status-messages"></div>
+    </div>
+
+    <script>
+        // Analytics Dashboard Controller
+        class AnalyticsDashboard {
+            constructor() {
+                this.apiBase = '/api';
+                this.charts = {};
+                this.init();
+            }
+
+            init() {
+                this.loadAnalytics();
+                this.setupRefreshInterval();
+            }
+
+            async loadAnalytics() {
+                try {
+                    await Promise.all([
+                        this.loadNetworkMetrics(),
+                        this.loadGraphData(),
+                        this.loadTopInfluencers()
+                    ]);
+                } catch (error) {
+                    console.error('Error loading analytics:', error);
+                }
+            }
+
+            async loadNetworkMetrics() {
+                try {
+                    const response = await fetch(`${this.apiBase}/get_analytics`);
+                    const data = await response.json();
+                    
+                    document.getElementById('total-nodes').textContent = data.total_nodes || 0;
+                    document.getElementById('total-edges').textContent = data.total_edges || 0;
+                    document.getElementById('network-density').textContent = (data.density || 0).toFixed(3);
+                    document.getElementById('avg-clustering').textContent = (data.average_clustering || 0).toFixed(3);
+                } catch (error) {
+                    console.error('Error loading network metrics:', error);
+                }
+            }
+
+            async loadGraphData() {
+                try {
+                    const response = await fetch(`${this.apiBase}/get_graph_data`);
+                    const data = await response.json();
+                    
+                    this.createInfluenceChart(data.nodes);
+                    this.createRelationshipChart(data.links);
+                    this.createFollowerChart(data.nodes);
+                    this.createEngagementScatter(data.nodes);
+                } catch (error) {
+                    console.error('Error loading graph data:', error);
+                }
+            }
+
+            async loadTopInfluencers() {
+                try {
+                    const response = await fetch(`${this.apiBase}/get_top_influencers?limit=20`);
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        this.populateInfluencersTable(data.top_influencers);
+                    }
+                } catch (error) {
+                    console.error('Error loading top influencers:', error);
+                }
+            }
+
+            createInfluenceChart(nodes) {
+                const ctx = document.getElementById('influence-chart').getContext('2d');
+                
+                const influenceLevels = {
+                    'Mega (100K+)': 0,
+                    'Macro (10K+)': 0,
+                    'Micro (1K+)': 0,
+                    'Regular': 0
+                };
+
+                nodes.forEach(node => {
+                    const followers = node.follower_count || 0;
+                    if (followers > 100000) influenceLevels['Mega (100K+)']++;
+                    else if (followers > 10000) influenceLevels['Macro (10K+)']++;
+                    else if (followers > 1000) influenceLevels['Micro (1K+)']++;
+                    else influenceLevels['Regular']++;
+                });
+
+                this.charts.influence = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(influenceLevels),
+                        datasets: [{
+                            data: Object.values(influenceLevels),
+                            backgroundColor: ['#ff4444', '#ff8844', '#ffaa44', '#4488ff'],
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            }
+
+            createRelationshipChart(links) {
+                const ctx = document.getElementById('relationship-chart').getContext('2d');
+                
+                const relationshipTypes = {};
+                links.forEach(link => {
+                    const type = link.relationship_type || 'unknown';
+                    relationshipTypes[type] = (relationshipTypes[type] || 0) + 1;
+                });
+
+                this.charts.relationship = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(relationshipTypes),
+                        datasets: [{
+                            label: 'Count',
+                            data: Object.values(relationshipTypes),
+                            backgroundColor: [
+                                '#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
+            createFollowerChart(nodes) {
+                const ctx = document.getElementById('follower-chart').getContext('2d');
+                
+                const followerRanges = {
+                    '0-100': 0,
+                    '100-1K': 0,
+                    '1K-10K': 0,
+                    '10K-100K': 0,
+                    '100K+': 0
+                };
+
+                nodes.forEach(node => {
+                    const followers = node.follower_count || 0;
+                    if (followers >= 100000) followerRanges['100K+']++;
+                    else if (followers >= 10000) followerRanges['10K-100K']++;
+                    else if (followers >= 1000) followerRanges['1K-10K']++;
+                    else if (followers >= 100) followerRanges['100-1K']++;
+                    else followerRanges['0-100']++;
+                });
+
+                this.charts.follower = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(followerRanges),
+                        datasets: [{
+                            label: 'Users',
+                            data: Object.values(followerRanges),
+                            backgroundColor: '#3498db',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
+            createEngagementScatter(nodes) {
+                const ctx = document.getElementById('engagement-scatter').getContext('2d');
+                
+                const scatterData = nodes.map(node => ({
+                    x: Math.log10((node.follower_count || 1) + 1),
+                    y: node.engagement_score || 0
+                }));
+
+                this.charts.engagement = new Chart(ctx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'Users',
+                            data: scatterData,
+                            backgroundColor: '#3498db',
+                            borderColor: '#2980b9',
+                            pointRadius: 5
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Log(Followers)'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Engagement Score'
+                                },
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
+            populateInfluencersTable(influencers) {
+                const tbody = document.getElementById('influencers-tbody');
+                
+                if (influencers.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7">No influencers found</td></tr>';
+                    return;
+                }
+
+                const rows = influencers.map((influencer, index) => `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td><strong>${influencer.user}</strong></td>
+                        <td>${(influencer.follower_count || 0).toLocaleString()}</td>
+                        <td>${(influencer.engagement_score || 0).toFixed(3)}</td>
+                        <td><span class="influence-score ${this.getInfluenceClass(influencer.influence_score)}">${(influencer.influence_score || 0).toFixed(3)}</span></td>
+                        <td>${(influencer.pagerank || 0).toFixed(4)}</td>
+                        <td>${(influencer.betweenness_centrality || 0).toFixed(4)}</td>
+                    </tr>
+                `).join('');
+
+                tbody.innerHTML = rows;
+            }
+
+            getInfluenceClass(score) {
+                if (score > 0.7) return 'influence-high';
+                if (score > 0.4) return 'influence-medium';
+                return 'influence-low';
+            }
+
+            setupRefreshInterval() {
+                // Refresh analytics every 30 seconds
+                setInterval(() => {
+                    this.loadAnalytics();
+                }, 30000);
+            }
+        }
+
+        // Initialize analytics dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            window.analyticsDashboard = new AnalyticsDashboard();
+        });
+    </script>
+
+    <style>
+        /* Analytics-specific styles */
+        .metrics-section {
+            margin-bottom: 30px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            border: 1px solid #e0e0e0;
+        }
+
+        .metric-card h4 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+
+        .metric-change {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .charts-section {
+            margin-bottom: 30px;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+        }
+
+        .chart-card h4 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .chart-card canvas {
+            height: 300px !important;
+        }
+
+        .influencers-section {
+            margin-bottom: 30px;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        #influencers-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        #influencers-table th,
+        #influencers-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        #influencers-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        #influencers-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .analysis-section {
+            margin-bottom: 30px;
+        }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .analysis-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+        }
+
+        .analysis-card h4 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .charts-grid,
+            .analysis-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .chart-card canvas {
+                height: 250px !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</body>
+</html> 

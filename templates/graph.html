@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph View - Social Media Influence Graph</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Interactive Graph Visualization</h1>
+            <nav>
+                <a href="/" class="nav-link">Home</a>
+                <a href="/graph" class="nav-link active">Graph View</a>
+                <a href="/analytics" class="nav-link">Analytics</a>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Graph Controls -->
+            <section class="graph-controls-section">
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <h4>View Controls</h4>
+                        <div class="button-group">
+                            <button id="zoom-fit" class="btn btn-secondary">Zoom to Fit</button>
+                            <button id="center-graph" class="btn btn-secondary">Center Graph</button>
+                            <button id="refresh-graph" class="btn btn-info">Refresh</button>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <h4>Highlight Node</h4>
+                        <div class="search-group">
+                            <input type="text" id="node-search" placeholder="Enter user handle...">
+                            <button id="highlight-node" class="btn btn-info">Highlight</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Full-Screen Graph -->
+            <section class="fullscreen-graph-section">
+                <div class="graph-header">
+                    <h3>Network Graph</h3>
+                    <div class="graph-info">
+                        <span>Nodes: <strong id="graph-node-count">0</strong></span>
+                        <span>Edges: <strong id="graph-edge-count">0</strong></span>
+                        <span>Density: <strong id="graph-density">0</strong></span>
+                    </div>
+                </div>
+                <div id="fullscreen-graph-container">
+                    <svg id="fullscreen-network-graph"></svg>
+                </div>
+            </section>
+        </main>
+
+        <!-- Status Messages -->
+        <div id="status-messages"></div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/graph.js') }}"></script>
+</body>
+</html> 

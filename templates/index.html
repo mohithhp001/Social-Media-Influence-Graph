@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Media Influence Graph</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Social Media Influence Graph</h1>
+            <nav>
+                <a href="/" class="nav-link active">Home</a>
+                <a href="/graph" class="nav-link">Graph View</a>
+                <a href="/analytics" class="nav-link">Analytics</a>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Input Section -->
+            <section class="input-section">
+                <div class="input-grid">
+                    <!-- Add User Form -->
+                    <div class="form-card">
+                        <h3>Add User</h3>
+                        <form id="add-user-form">
+                            <div class="form-group">
+                                <label for="user-handle">User Handle:</label>
+                                <input type="text" id="user-handle" name="user_handle" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="follower-count">Follower Count:</label>
+                                <input type="number" id="follower-count" name="follower_count" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="engagement-score">Engagement Score (0-1):</label>
+                                <input type="number" id="engagement-score" name="engagement_score" 
+                                       min="0" max="1" step="0.01" value="0">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add User</button>
+                        </form>
+                    </div>
+
+                    <!-- Add Relationship Form -->
+                    <div class="form-card">
+                        <h3>Add Relationship</h3>
+                        <form id="add-relationship-form">
+                            <div class="form-group">
+                                <label for="source-entity">Source Entity:</label>
+                                <input type="text" id="source-entity" name="source_entity" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="target-entity">Target Entity:</label>
+                                <input type="text" id="target-entity" name="target_entity" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="relationship-type">Relationship Type:</label>
+                                <select id="relationship-type" name="relationship_type">
+                                    <option value="follows">Follows</option>
+                                    <option value="mentions">Mentions</option>
+                                    <option value="likes">Likes</option>
+                                    <option value="shares">Shares</option>
+                                    <option value="comments">Comments</option>
+                                    <option value="created">Created</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="weight">Weight:</label>
+                                <input type="number" id="weight" name="weight" min="0" step="0.1" value="1.0">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add Relationship</button>
+                        </form>
+                    </div>
+
+                    <!-- File Upload Form -->
+                    <div class="form-card">
+                        <h3>Upload Data File</h3>
+                        <form id="upload-form" enctype="multipart/form-data">
+                            <div class="form-group">
+                                <label for="data-file">Choose CSV or JSON file:</label>
+                                <input type="file" id="data-file" name="file" accept=".csv,.json" required>
+                            </div>
+                            <div class="file-info">
+                                <p><strong>CSV Format:</strong> source_entity, target_entity, relationship_type, weight, source_followers, target_followers, source_engagement, target_engagement</p>
+                                <p><strong>JSON Format:</strong> {"nodes": [...], "edges": [...]}</p>
+                            </div>
+                            <button type="submit" class="btn btn-secondary">Upload File</button>
+                        </form>
+                    </div>
+
+                    <!-- Query Form -->
+                    <div class="form-card">
+                        <h3>🔍 Query Influence Chain</h3>
+                        <form id="query-form">
+                            <div class="form-group">
+                                <label for="query-user">User Handle:</label>
+                                <input type="text" id="query-user" name="user" required 
+                                       placeholder="Enter username (e.g., Alice, Bob)" 
+                                       autocomplete="off">
+                                <small class="form-help">Enter the exact username you want to analyze</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="query-depth">Search Depth:</label>
+                                <input type="number" id="query-depth" name="depth" min="1" max="5" value="3">
+                                <small class="form-help">How many levels deep to search (1-5)</small>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-info">
+                                    <span class="btn-icon">🔍</span>
+                                    <span class="btn-text">Query Chain</span>
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="window.influenceApp.getTopInfluencers()">
+                                    <span class="btn-icon">👑</span>
+                                    <span class="btn-text">Show Top Users</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section">
+                <div class="results-grid">
+                    <!-- Network Stats -->
+                    <div class="stats-card">
+                        <h4>📊 Network Statistics</h4>
+                        <div id="network-stats">
+                            <p>Nodes: <span id="node-count">0</span></p>
+                            <p>Edges: <span id="edge-count">0</span></p>
+                            <p>Density: <span id="density">0</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Top Influencers -->
+                    <div class="stats-card">
+                        <h4>👑 Top Influencers</h4>
+                        <div id="top-influencers-list">
+                            <p>No data available</p>
+                        </div>
+                    </div>
+
+                    <!-- Query Results -->
+                    <div class="stats-card">
+                        <h4>🔍 Query Results</h4>
+                        <div id="query-results">
+                            <p>No queries performed</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Visualization Section -->
+            <section class="visualization-section">
+                <div class="viz-header">
+                    <h3>🌐 Network Visualization</h3>
+                    <div class="viz-controls">
+                        <button id="refresh-graph" class="btn btn-secondary">Refresh Graph</button>
+                        <button id="clear-graph" class="btn btn-danger">Clear Graph</button>
+                        <button id="get-top-influencers" class="btn btn-info">Top Influencers</button>
+                    </div>
+                </div>
+                <div id="graph-container">
+                    <svg id="network-graph"></svg>
+                </div>
+            </section>
+        </main>
+
+        <!-- Status Messages -->
+        <div id="status-messages"></div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/graph.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+</body>
+</html> 

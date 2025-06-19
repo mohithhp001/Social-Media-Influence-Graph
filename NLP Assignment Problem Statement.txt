@@ -1,0 +1,72 @@
+﻿Part - A
+
+Problem Statement: Social Media Influence Graph
+
+Objective:
+
+Design and implement a web-based Knowledge Graph application that models and visualizes the relationships between social media users, their content, interactions, and influence metrics. Users should be able to explore how influence spreads, identify key influencers, and analyze engagement patterns across a network.
+
+Requirements:
+
+Web Interface (3 Marks)
+
+Front-End Development:
+
+1. Develop an engaging and intuitive interface using HTML, CSS, and JavaScript.
+
+2. Provide input fields for:
+   a. User Handles
+   b. Content Posts (e.g., tweets, videos)
+   c. Interactions (e.g., likes, shares, mentions)
+   d. Influence Metrics (e.g., follower count, engagement score)
+
+User Input:
+
+3. Users should be able to:
+   a. Add users and link them based on interactions (e.g., "User A mentioned User B", "User C liked Post D").
+   b. Upload CSV or JSON files representing social media interaction data.
+
+Use Case to Consider for Input:
+
+4. Influencer Detection and Trend Mapping: Understand how influence flows in a network, discover key nodes (influencers), and identify communities of high engagement or shared interests.
+
+5. Input Fields Must Include:
+   a. Source Entity, Relationship Type (e.g., follows, mentions, likes, created), and Target Entity.
+
+Graph Query and Visualization (3 Marks)
+
+Back-End Implementation:
+
+1. Use Flask to handle user input, query processing, and response serving.
+
+2. Use networkx to create a directed influence graph with weighted edges based on interaction frequency or engagement level.
+
+3. Allow users to:
+   a. Query the influence chain of a specific user.
+   b. Identify top influencers in a niche/topic.
+   c. Explore mutual engagement networks.
+
+Visualization Requirements:
+
+1. Use D3.js or equivalent to render the graph.
+
+2. Ensure the graph:
+   a. Automatically updates with new inputs.
+   b. Visually distinguishes users, content, and interactions.
+   c. Highlights highly connected/influential nodes using size or color coding.
+
+Integration (2 Marks)
+
+1. Fully integrate front-end and back-end.
+2. Allow for both real-time entry and bulk uploads.
+
+Task B: Enhancement Plan (2 Marks)
+
+Propose a forward-looking enhancement plan that includes:
+
+1. Performance Improvements: Use parallel processing for batch uploads, cache high-traffic paths, and apply graph algorithms like PageRank or Betweenness Centrality.
+
+2. Advanced Visualization:
+   a. Include heatmaps or cluster views of influence spread,
+   b. Add filters by platform, keyword, or engagement type,
+   c. Show timeline evolution of influence networks.
