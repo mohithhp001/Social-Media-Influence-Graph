@@ -450,33 +450,4 @@ function debounce(func, wait) {
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.influenceApp = new InfluenceGraphApp();
-    window.themeManager = new ThemeManager();
-});
-
-class ThemeManager {
-    constructor() {
-        this.toggleBtn = document.getElementById('theme-toggle');
-        if (this.toggleBtn) {
-            this.toggleBtn.addEventListener('click', () => this.toggleTheme());
-        }
-        this.loadTheme();
-    }
-
-    loadTheme() {
-        const theme = localStorage.getItem('theme') || 'light';
-        document.body.classList.toggle('dark-mode', theme === 'dark');
-        this.updateButton(theme);
-    }
-
-    toggleTheme() {
-        const isDark = document.body.classList.toggle('dark-mode');
-        const theme = isDark ? 'dark' : 'light';
-        localStorage.setItem('theme', theme);
-        this.updateButton(theme);
-    }
-
-    updateButton(theme) {
-        if (!this.toggleBtn) return;
-        this.toggleBtn.textContent = theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
-    }
-}
+}); 
