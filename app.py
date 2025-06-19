@@ -8,10 +8,29 @@ from utils.graph_utils import GraphProcessor
 from utils.data_processor import DataProcessor
 from utils.influence_calc import InfluenceCalculator
 
+# Ontology imports
+import rdflib
+from rdflib.namespace import RDF, Namespace
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 app.config['UPLOAD_FOLDER'] = 'static/data'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Load ontology
+ontology = rdflib.Graph()
+ontology.parse('ontology.owl', format='turtle')
+NS = Namespace('http://example.org/socialmedia#')
+
+# Validation function
+def validate_relationship(source_type, relation, target_type):
+    rel = NS[relation]
+    domain = ontology.value(rel, NS.domain)
+    range_ = ontology.value(rel, NS.range)
+    if domain and range_:
+        if domain.split('#')[-1] == source_type and range_.split('#')[-1] == target_type:
+            return True
+    return False
 
 # Initialize processors
 graph_processor = GraphProcessor()
@@ -61,7 +80,7 @@ def add_user():
 
 @app.route('/api/add_relationship', methods=['POST'])
 def add_relationship():
-    """Add a relationship between users"""
+    """Add a relationship between users with ontology validation"""
     try:
         data = request.get_json()
         source = data.get('source_entity')
@@ -69,31 +88,23 @@ def add_relationship():
         relationship_type = data.get('relationship_type')
         weight = float(data.get('weight', 1.0))
         
-        # Ensure both nodes exist with default attributes if they don't already exist
+        # Ensure both nodes exist
         if source not in influence_graph:
-            influence_graph.add_node(source, 
-                                   follower_count=0,
-                                   engagement_score=0.0,
-                                   node_type='user')
-        
+            influence_graph.add_node(source, follower_count=0, engagement_score=0.0, node_type='user')
         if target not in influence_graph:
-            influence_graph.add_node(target, 
-                                   follower_count=0,
-                                   engagement_score=0.0,
-                                   node_type='user')
+            influence_graph.add_node(target, follower_count=0, engagement_score=0.0, node_type='user')
+
+        # Ontology-driven validation
+        src_type = influence_graph.nodes[source].get('node_type').capitalize()
+        tgt_type = influence_graph.nodes[target].get('node_type').capitalize()
+        if not validate_relationship(src_type, relationship_type, tgt_type):
+            return jsonify({'status':'error','message':'Invalid relationship per ontology.'}), 400
         
-        # Add relationship to graph
-        # For "follows" relationships, reverse the edge direction to represent influence flow
-        # If A follows B, then B influences A, so edge should be B -> A
+        # For "follows" relationships, reverse edge for influence flow
         if relationship_type == 'follows':
-            influence_graph.add_edge(target, source, 
-                                   relationship_type=relationship_type,
-                                   weight=weight)
+            influence_graph.add_edge(target, source, relationship_type=relationship_type, weight=weight)
         else:
-            # For other relationships (likes, mentions, shares), keep original direction
-            influence_graph.add_edge(source, target, 
-                                   relationship_type=relationship_type,
-                                   weight=weight)
+            influence_graph.add_edge(source, target, relationship_type=relationship_type, weight=weight)
         
         return jsonify({
             'status': 'success',
@@ -156,18 +167,10 @@ def query_influence_chain():
         
         chain = influence_calc.get_influence_chain(influence_graph, user, depth)
         
-        # Check if user was not found
         if 'error' in chain:
-            return jsonify({
-                'status': 'error',
-                'message': chain['error']
-            }), 404
+            return jsonify({'status': 'error', 'message': chain['error']}), 404
         
-        return jsonify({
-            'status': 'success',
-            'user': user,
-            'influence_chain': chain
-        })
+        return jsonify({'status': 'success', 'user': user, 'influence_chain': chain})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 400
 
@@ -179,10 +182,7 @@ def get_top_influencers():
         niche = request.args.get('niche', None)
         
         influencers = influence_calc.get_top_influencers(influence_graph, limit, niche)
-        return jsonify({
-            'status': 'success',
-            'top_influencers': influencers
-        })
+        return jsonify({'status': 'success', 'top_influencers': influencers})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 400
 
@@ -194,10 +194,7 @@ def get_mutual_engagement():
         users = data.get('users', [])
         
         mutual_network = influence_calc.get_mutual_engagement(influence_graph, users)
-        return jsonify({
-            'status': 'success',
-            'mutual_engagement': mutual_network
-        })
+        return jsonify({'status': 'success', 'mutual_engagement': mutual_network})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 400
 
@@ -208,42 +205,21 @@ def get_analytics():
         node_count = influence_graph.number_of_nodes()
         edge_count = influence_graph.number_of_edges()
         
-        # Handle empty graph case
         if node_count == 0:
-            analytics = {
-                'total_nodes': 0,
-                'total_edges': 0,
-                'density': 0.0,
-                'is_connected': False,
-                'average_clustering': 0.0,
-                'pagerank': {}
-            }
+            analytics = {'total_nodes': 0,'total_edges': 0,'density': 0.0,'is_connected': False,'average_clustering': 0.0,'pagerank': {}}
         else:
-            # Calculate analytics for non-empty graph
             density = nx.density(influence_graph) if edge_count > 0 else 0.0
-            is_connected = nx.is_weakly_connected(influence_graph) if node_count > 1 else True
-            
-            # Calculate clustering coefficient safely
+            is_conn = nx.is_weakly_connected(influence_graph) if node_count > 1 else True
             try:
-                avg_clustering = nx.average_clustering(influence_graph.to_undirected()) if node_count > 1 else 0.0
+                avg_clust = nx.average_clustering(influence_graph.to_undirected()) if node_count > 1 else 0.0
             except:
-                avg_clustering = 0.0
-            
-            # Calculate PageRank safely
+                avg_clust = 0.0
             try:
-                pagerank_dict = nx.pagerank(influence_graph) if edge_count > 0 else {}
-                top_pagerank = dict(list(pagerank_dict.items())[:10])
+                pr = nx.pagerank(influence_graph) if edge_count > 0 else {}
+                top_pr = dict(list(pr.items())[:10])
             except:
-                top_pagerank = {}
-            
-            analytics = {
-                'total_nodes': node_count,
-                'total_edges': edge_count,
-                'density': density,
-                'is_connected': is_connected,
-                'average_clustering': avg_clustering,
-                'pagerank': top_pagerank
-            }
+                top_pr = {}
+            analytics = {'total_nodes': node_count,'total_edges': edge_count,'density': density,'is_connected': is_conn,'average_clustering': avg_clust,'pagerank': top_pr}
         
         return jsonify(analytics)
     except Exception as e:
@@ -253,12 +229,8 @@ def get_analytics():
 def clear_graph():
     """Clear the entire graph"""
     try:
-        global influence_graph
         influence_graph.clear()
-        return jsonify({
-            'status': 'success',
-            'message': 'Graph cleared successfully'
-        })
+        return jsonify({'status': 'success','message': 'Graph cleared successfully'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 400
 
@@ -268,44 +240,18 @@ def allowed_file(filename):
 
 @app.route('/NetworkProxy/<path:subpath>')
 def handle_network_proxy(subpath):
-    """Handle NetworkProxy requests (likely from browser extensions or network tools)"""
-    print(f"NetworkProxy request intercepted: /NetworkProxy/{subpath}")
-    print(f"User agent: {request.headers.get('User-Agent', 'Unknown')}")
-    print(f"Referer: {request.headers.get('Referer', 'None')}")
-    
-    # Return a benign response to prevent errors
-    return jsonify({
-        'status': 'ok',
-        'message': 'NetworkProxy request handled',
-        'note': 'This appears to be from a browser extension or network monitoring tool'
-    }), 200
+    """Handle NetworkProxy requests"""
+    print(f"NetworkProxy request: {subpath}")
+    return jsonify({'status':'ok','note':'Handled'}), 200
 
 @app.errorhandler(404)
 def not_found_error(error):
-    """Handle 404 errors and log them for debugging"""
-    print(f"404 Error - Requested URL: {request.url}")
-    print(f"404 Error - Request path: {request.path}")
-    print(f"404 Error - Request method: {request.method}")
-    print(f"404 Error - User agent: {request.headers.get('User-Agent', 'Unknown')}")
-    print(f"404 Error - Referer: {request.headers.get('Referer', 'None')}")
-    print("---")
-    
-    # Return JSON for API calls, HTML for page requests
+    """Handle 404 errors and log them"""
+    print(f"404 at {request.path}")
     if request.path.startswith('/api/'):
-        return jsonify({
-            'status': 'error',
-            'message': f'API endpoint not found: {request.path}'
-        }), 404
-    else:
-        return jsonify({
-            'status': 'error',
-            'message': f'Page not found: {request.path}',
-            'suggestion': 'Check the URL or navigate back to the home page'
-        }), 404
+        return jsonify({'status':'error','message': f'API endpoint not found: {request.path}'}), 404
+    return render_template('404.html'), 404
 
 if __name__ == '__main__':
-    # Create necessary directories
-    os.makedirs('static/data', exist_ok=True)
-    os.makedirs('utils', exist_ok=True)
-    
-    app.run(debug=True, host='0.0.0.0', port=5000) 
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)

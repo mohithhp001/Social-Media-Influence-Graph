@@ -1,0 +1,19 @@
+{
+    "nodes": [
+      {"id": "Alice", "type": "User", "follower_count": 150, "engagement_score": 0.5},
+      {"id": "Bob",   "type": "User", "follower_count": 200, "engagement_score": 0.7},
+      {"id": "Charlie", "type": "User", "follower_count": 50, "engagement_score": 0.2},
+      {"id": "Post1",  "type": "Post", "content_text": "Hello world!", "timestamp": "2025-06-19T10:00:00Z"},
+      {"id": "Post2",  "type": "Post", "content_text": "Graph theory rocks", "timestamp": "2025-06-19T11:00:00Z"}
+    ],
+    "edges": [
+      {"source": "Alice",   "target": "Bob",   "relation": "follows", "weight": 1.0},
+      {"source": "Bob",     "target": "Post1", "relation": "creates", "weight": 1.0},
+      {"source": "Alice",   "target": "Post2", "relation": "creates", "weight": 1.0},
+      {"source": "Charlie", "target": "Bob",   "relation": "mentions","weight": 0.5},
+      {"source": "Bob",     "target": "Post2", "relation": "likes",   "weight": 0.8},
+      {"source": "Dave",    "target": "Alice", "relation": "shares",  "weight": 1.2},
+      {"source": "Eve",     "target": "Charlie","relation": "follows", "weight": 1.0}
+    ]
+  }
+  

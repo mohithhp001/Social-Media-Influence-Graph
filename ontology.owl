@@ -1,0 +1,45 @@
+@prefix :      <http://example.org/socialmedia#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+
+:User          a owl:Class .
+:Post          a owl:Class .
+:Interaction   a owl:Class .
+
+:followerCount    a owl:DatatypeProperty ;
+    rdfs:domain :User ;
+    rdfs:range  xsd:integer .
+
+:engagementScore  a owl:DatatypeProperty ;
+    rdfs:domain :User ;
+    rdfs:range  xsd:float .
+
+:contentText      a owl:DatatypeProperty ;
+    rdfs:domain :Post ;
+    rdfs:range  xsd:string .
+
+:timestamp        a owl:DatatypeProperty ;
+    rdfs:domain :Post ;
+    rdfs:range  xsd:string .
+
+:follows       a owl:ObjectProperty ;
+    rdfs:domain :User ;
+    rdfs:range  :User .
+
+:mentions      a owl:ObjectProperty ;
+    rdfs:domain :User ;
+    rdfs:range  :User .
+
+:creates       a owl:ObjectProperty ;
+    rdfs:domain :User ;
+    rdfs:range  :Post .
+
+:likes         a owl:ObjectProperty ;
+    rdfs:domain :User ;
+    rdfs:range  :Post .
+
+:shares        a owl:ObjectProperty ;
+    rdfs:domain :User ;
+    rdfs:range  :Post .
